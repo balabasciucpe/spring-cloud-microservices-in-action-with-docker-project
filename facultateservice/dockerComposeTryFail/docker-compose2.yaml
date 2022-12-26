@@ -1,0 +1,96 @@
+version: '3'
+
+
+
+services:
+
+  keycloak:
+    image: jboss/keycloak
+    container_name: keycloak
+    restart: always
+    environment:
+      DB_VENDOR: MYSQL
+      DB_ADDR: database
+      DB_DATABASE: petrea
+      DB_USER: root
+      DB_PASSWORD: ravage123
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+      #    KEYCLOAK_LOGLEVEL: DEBUG
+      JDBC_PARAMS: "connectTimeout=30000"
+    volumes:
+      - "./realm-export.json:/opt/jboss/keycloak/realm-export.json"
+    command:
+      - "-b 0.0.0.0"
+      - '-Dkeycloak.import=/opt/jboss/keycloak/realm-export.json'
+      - "-Dkeycloak.profile.feature.scripts=enabled"
+      - "-Dkeycloak.profile.feature.upload_scripts=enabled"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - database
+    networks:
+      - spring-cloud-network
+
+
+
+  database:
+    image: mysql:8.0
+    container_name: database
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_DATABASE: petrea
+      MYSQL_ROOT_PASSWORD: ravage123
+      MYSQL_ROOT_USER: root
+    networks:
+      - spring-cloud-network
+
+  facultate:
+    container_name: facultate
+    build: C:\Users\marius\com.balabasciuc.springmicroservicesinaction\facultateservice
+    restart: on-failure
+    ports:
+      - "1002:1002"
+    environment:
+      #  SPRING_CONFIG_INPORT: optional:configserver:http://config:7070
+      SPRING_CLOUD_CONFIG_URI: "http://config:7070"
+      EUREKA_HOST: server
+      EUREKA_PORT: 9001
+     # KAFKA_HOST: 9092
+      DATABASE_HOST: database
+  #    SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: kafka:9092
+    depends_on:
+#      - kafka
+#      - zookeeper
+      - server
+#      - database
+    networks:
+      - spring-cloud-network
+
+  server:
+    container_name: server
+    build: C:\Users\marius\com.balabasciuc.springmicroservicesinaction\eurekaserver
+    restart: on-failure
+    ports:
+      - 9001:9001
+    environment:
+      SPRING_CLOUD_CONFIG_URI: "http://config:7070"
+    depends_on:
+      - config
+    networks:
+      - spring-cloud-network
+
+  config:
+    container_name: config
+    build: C:\Users\marius\com.balabasciuc.springmicroservicesinaction\configserver
+    ports:
+      - 7070:7070
+    networks:
+      - spring-cloud-network
+
+
+networks:
+  spring-cloud-network:
+    driver: bridge

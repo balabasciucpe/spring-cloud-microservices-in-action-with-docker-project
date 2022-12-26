@@ -1,0 +1,198 @@
+version: '2.1'
+services:
+
+  keycloak:
+    image: jboss/keycloak
+    container_name: keycloak
+    restart: always
+    environment:
+      DB_VENDOR: MYSQL
+      DB_ADDR: database
+      DB_DATABASE: petrea
+      DB_USER: root
+      DB_PASSWORD: ravage123
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+      KEYCLOAK_LOGLEVEL: DEBUG
+      KEYCLOAK_VERSION: 6.0.1
+  #    JDBC_PARAMS: "connectTimeout=300000"
+      JDBC_PARAMS: "useSSL=false&allowPublicKeyRetrieval=true"
+      JAVA_OPTS_APPEND: "-Djboss.as.management.blocking.timeout=70200"
+    volumes:
+      - "//./export-realm.json:/opt/jboss/keycloak/export-realm.json"
+    command:
+      -b 0.0.0.0
+      -Dkeycloak.import=/opt/jboss/keycloak/export-realm.json
+      -Dkeycloak.profile.feature.scripts=enabled
+      -Dkeycloak.profile.feature.upload_scripts=enabled
+    ports:
+      - "8080:8080"
+    depends_on:
+      - database
+    networks:
+      - spring-cloud-network
+      #- $env:COMPOSE_CONVERT_WINDOWS_PATHS=1
+
+  database:
+    image: mysql:8.0
+    container_name: database
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_DATABASE: petrea
+      MYSQL_ROOT_PASSWORD: ravage123
+      MYSQL_ROOT_USER: root
+    networks:
+      - spring-cloud-network
+
+  config:
+    container_name: config
+    build: C:\Users\marius\com.balabasciuc.springmicroservicesinaction\configserver
+    ports:
+      - 7070:7070
+    networks:
+      - spring-cloud-network
+
+  server:
+    container_name: server
+    restart: on-failure
+    build: C:\Users\marius\com.balabasciuc.springmicroservicesinaction\eurekaserver
+    ports:
+      - 9001:9001
+    environment:
+      SPRING_CLOUD_CONFIG_URI: "http://config:7070"
+    depends_on:
+      config:
+        condition: service_started
+      database:
+        condition: service_started
+    networks:
+      - spring-cloud-network
+
+  zookeeper:
+    image: wurstmeister/zookeeper:latest
+    ports:
+      - 2181:2181
+    networks:
+      - spring-cloud-network
+
+  kafka:
+    image: wurstmeister/kafka:latest
+    ports:
+      - 9092:9092
+    environment:
+      - KAFKA_ADVERTISED_HOST_NAME=kafka
+      - KAFKA_ADVERTISED_PORT=9092
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CREATE_TOPICS=dresses:1:1,ratings:1:1
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    depends_on:
+      - zookeeper
+    networks:
+      - spring-cloud-network
+
+#  student:
+#    container_name: student
+#    build: C:\Users\marius\com.balabasciuc.springmicroservicesinaction\studentservice
+#   # restart: no
+#    ports:
+#      - "1000:1000"
+#    environment:
+#      EUREKA_HOST: server
+#      EUREKA_PORT: 9001
+#      DATABASE_HOST: database
+#      CONFIG_URI: config
+#  #  depends_on:
+#  #    kafka:
+#  #      condition: service_started
+#  #    server:
+#  #      condition: service_started
+#  #    config:
+#  #      condition: service_started
+#  #    keycloak:
+#  #      condition: service_started
+#    networks:
+#      - spring-cloud-network
+
+  studentservice:
+    container_name: studentservice
+    build: C:\Users\marius\com.balabasciuc.springmicroservicesinaction\student
+    ports:
+      - "1000:1000"
+    environment:
+      EUREKA_HOST: server
+      EUREKA_PORT: 9001
+      DATABASE_HOST: database
+      SPRING_CLOUD_CONFIG_URI: "http://config:7070"
+    depends_on:
+      server:
+        condition: service_started
+      config:
+        condition: service_started
+    networks:
+      - spring-cloud-network
+
+
+  facultate:
+    container_name: facultate
+    build: C:\Users\marius\com.balabasciuc.springmicroservicesinaction\facultateservice
+    restart: on-failure
+    ports:
+      - "1002:1002"
+    environment:
+      #  SPRING_CONFIG_INPORT: optional:configserver:http://config:7070
+      SPRING_CLOUD_CONFIG_URI: "http://config:7070"
+      EUREKA_HOST: server
+      EUREKA_PORT: 9001
+      DATABASE_HOST: database
+    depends_on:
+      kafka:
+        condition: service_started
+      server:
+        condition: service_started
+      config:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    networks:
+      - spring-cloud-network
+
+  gateway:
+    container_name: gateway
+    build: C:\Users\marius\com.balabasciuc.springmicroservicesinaction\gatewayservice
+    restart: on-failure
+    ports:
+      - "3000:3000"
+    environment:
+      CONFIG_URI: "http://config:7070"
+      EUREKA_HOST: server
+      EUREKA_POST: 9001
+    depends_on:
+      server:
+        condition: service_started
+      config:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    networks:
+      - spring-cloud-network
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - spring-cloud-network
+
+
+volumes:
+  simple:
+    driver: local
+
+
+networks:
+  spring-cloud-network:
+    driver: bridge

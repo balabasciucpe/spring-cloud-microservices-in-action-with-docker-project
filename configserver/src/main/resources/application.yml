@@ -1,0 +1,23 @@
+server:
+  port: 7070
+
+spring:
+  application:
+    name: CONFIG-SERVER
+  #  profiles:
+  #    active:
+  #    - git
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/hideyourname/spring-microservices-in-action-config.git
+          default-label: main
+
+#Enable all Spring Boot Actuator endpoints.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+

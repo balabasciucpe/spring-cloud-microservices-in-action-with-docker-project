@@ -1,0 +1,67 @@
+spring:
+  application:
+    name: gateway-service
+
+  config:
+    import: optional:configserver:${CONFIG_URI:http://localhost:7070}
+  cloud:
+    gateway:
+      default-filters: # <- de aici
+        - DedupeResponseHeader=Access-Control-Allow-Origin
+      globalcors:
+        cors-configurations:
+          "[/**]":
+            allowCredentials: true
+            allowedOriginPatterns: "*"
+            allowedHeaders: "Origin, X-Requested-With, Content-Type, Accept, Content-Length, TOKEN, Authorization"
+            allowedMethods: "GET, POST, PATCH, PUT, DELETE, OPTIONS"
+            maxAge: 3628800 #pana aici
+      routes:
+      - id: FACULTATE-SERVICE
+        uri: lb://FACULTATE-SERVICE
+        predicates:
+          - Path=/facultate/** # merge cu facultate-service
+          - Header=Authorization, Bearer [0-9a-zA-Z-.]*
+        filters:
+          - RewritePath=/facultate/(?<path>.*), /$\{path}
+          - RemoveRequestHeader= Cookie,Set-Cookie
+      #    - TokenRelay=
+      - id: STUDENT-SERVICE
+        uri: lb://STUDENT-SERVICE
+        predicates:
+          - Path=/students/**
+          - Header=Authorization, Bearer [0-9a-zA-Z-.]*
+        filters:
+          - RewritePath=/students/(?<path>.*), /$\{path}
+          - RemoveRequestHeader= Cookie,Set-Cookie
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+    config:
+      uri: http://localhost:7070
+      fail-fast: true
+      retry:
+        initial-interval: 1500
+        multiplier: 1.5
+        max-attempts: 10000
+        max-interval: 2000
+  zipkin:
+    base-url: ${ZIPKIN_HOST:localhost:9411}
+
+
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+logging:
+  level:
+    com.netflix: WARN
+    org.springframework.web: WARN
+    com.balabasciuc: DEBUG
+
+

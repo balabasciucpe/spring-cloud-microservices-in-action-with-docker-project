@@ -1,0 +1,75 @@
+spring:
+  application:
+    name: student-service
+
+
+logging:
+  level:
+    com.netflix: WARN
+    org.springframework.web: WARN
+    com.balabasciuc.springmicroservicesinaction: DEBUG
+
+
+
+
+resilience4j.circuitbreaker:
+  instances:
+    studentService:
+      registerHealthIndicator: true
+      ringBufferSizeInClosedState: 5
+      ringBufferSizeInHalfOpenState: 3
+      waitDurationInOpenState: 10s
+      failureRateThreshold: 50
+      recordExceptions:
+        - org.springframework.web.client.HttpServerErrorException
+        - java.io.IOException
+        - java.util.concurrent.TimeoutException
+        - org.springframework.web.client.ResourceAccessException
+    studentServicee:
+      registerHealthIndicator: true
+      ringBufferSizeInClosedState: 5
+      ringBufferSizeInHalfOpenState: 3
+      waitDurationInOpenState: 10s
+      failureRateThreshold: 50
+      recordExceptions:
+        - org.springframework.web.client.HttpServerErrorException
+        - java.io.IOException
+        - java.util.concurrent.TimeoutException
+        - org.springframework.web.client.ResourceAccessException
+        - java.lang.Exception
+
+
+management:
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+
+
+resilience4j:
+  bulkhead:
+    instances:
+      bulkheadStudentService:
+        maxWaitDuration: 10s
+        maxConcurrentCalls: 10
+  thread-pool-bulkhead:
+    instances:
+      bulkheadStudentService:
+        maxThreadPoolSize: 1
+        coreThreadPoolSize: 1
+        queueCapacity: 3
+        keepAliveDuration: 10ms
+
+  retry:
+    instances:
+      retryStudentService:
+        maxRetryAttempts: 5
+        waitDuration: 10s
+        retry-exceptions:
+          - java.lang.Exception

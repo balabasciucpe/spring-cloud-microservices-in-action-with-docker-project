@@ -1,0 +1,107 @@
+spring:
+  config:
+    import: optional:configserver:${CONFIG_URI:http://localhost:7070}
+
+  application:
+    name: student-service
+
+  cloud:
+    config:
+      uri: http://localhost:7070
+      fail-fast: true
+      retry:
+        initial-interval: 1500
+        multiplier: 1.5
+        max-attempts: 10000
+        max-interval: 2000
+
+logging:
+  level:
+    com.netflix: WARN
+    org.springframework.web: WARN
+    com.balabasciuc.springmicroservicesinaction: DEBUG
+
+
+#resilience4j:
+#  circuitbreaker:
+#    instances:
+#      studentService:
+#        register-health-indicator: true
+#        ring-buffer-size-in-closed-state: 5
+#        ring-buffer-size-in-half-open-state: 3
+#        wait-duration-in-open-state: 20s
+#        failure-rate-threshold: 1
+#        record-exceptions:
+#          - org.springframework.web.client.HttpServerErrorException
+#          - java.io.IOException
+#          - java.util.concurrent.TimeoutException
+#          - org.springframework.web.client.ResourceAccessException
+#          - java.net.ConnectException
+#management:
+#  health:
+#    circuitbreakers:
+#      enabled: true
+
+
+resilience4j.circuitbreaker:
+  instances:
+    studentService:
+      registerHealthIndicator: true
+      ringBufferSizeInClosedState: 5
+      ringBufferSizeInHalfOpenState: 3
+      waitDurationInOpenState: 10s
+      failureRateThreshold: 50
+      recordExceptions:
+        - org.springframework.web.client.HttpServerErrorException
+        - java.io.IOException
+        - java.util.concurrent.TimeoutException
+        - org.springframework.web.client.ResourceAccessException
+    studentServicee:
+      registerHealthIndicator: true
+      ringBufferSizeInClosedState: 5
+      ringBufferSizeInHalfOpenState: 3
+      waitDurationInOpenState: 10s
+      failureRateThreshold: 50
+      recordExceptions:
+        - org.springframework.web.client.HttpServerErrorException
+        - java.io.IOException
+        - java.util.concurrent.TimeoutException
+        - org.springframework.web.client.ResourceAccessException
+        - java.lang.Exception
+
+
+management:
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+
+
+resilience4j:
+  bulkhead:
+    instances:
+      bulkheadStudentService:
+        maxWaitDuration: 10s
+        maxConcurrentCalls: 10
+  thread-pool-bulkhead:
+    instances:
+      bulkheadStudentService:
+        maxThreadPoolSize: 1
+        coreThreadPoolSize: 1
+        queueCapacity: 3
+        keepAliveDuration: 10ms
+
+  retry:
+    instances:
+      retryStudentService:
+        maxRetryAttempts: 5
+        waitDuration: 10s
+        retry-exceptions:
+          - java.lang.Exception
+
