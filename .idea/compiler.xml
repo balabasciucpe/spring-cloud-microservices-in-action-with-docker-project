@@ -11,6 +11,7 @@
         <module name="configserver" />
         <module name="facultateservice" />
         <module name="student" />
+        <module name="studentservice" />
         <module name="gatewayservice" />
       </profile>
     </annotationProcessing>
